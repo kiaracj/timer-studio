@@ -1,0 +1,617 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Registro Esami</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&amp;family=Fraunces:opsz,wght@9..144,600;9..144,700&amp;display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --ink: #452b39;
+      --muted: #806b77;
+      --rose: #ad416d;
+      --line: #efd6e0;
+      --focus: #ad416d;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: "DM Sans", sans-serif; color: var(--ink); }
+    .app-shell {
+      width: 100%;
+      min-height: 100vh;
+      background:
+        radial-gradient(ellipse 54% 38% at 96% 3%, #f5c6d9 0%, transparent 75%),
+        radial-gradient(ellipse 45% 40% at 0% 86%, #f9dae5 0%, transparent 75%),
+        #fff3f6;
+    }
+    .title-face { font-family: "Fraunces", serif; letter-spacing: -.045em; }
+    .eyebrow-rule { width: 34px; height: 2px; background: #ad416d; border-radius: 99px; }
+    .surface {
+      border: 1px solid #efd6e0;
+      box-shadow: 0 16px 42px rgba(112, 52, 79, .07), 0 2px 8px rgba(112, 52, 79, .025);
+    }
+    .field {
+      width: 100%;
+      min-height: 48px;
+      border: 1px solid #e8cbd7;
+      border-radius: 12px;
+      background: #fffafb;
+      padding: 10px 14px;
+      color: var(--ink);
+      color-scheme: light;
+      transition: border-color .2s, box-shadow .2s, background .2s;
+    }
+    .field:hover { border-color: #d8a6bb; }
+    .field:focus {
+      outline: none;
+      border-color: var(--focus);
+      box-shadow: 0 0 0 4px rgba(173, 65, 109, .13);
+      background: #fff;
+    }
+    button:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+    .submit-action { box-shadow: 0 7px 16px rgba(173, 65, 109, .2); }
+    .submit-action:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 11px 22px rgba(173, 65, 109, .25); }
+    .submit-action:disabled { cursor: not-allowed; opacity: .6; }
+
+    .table-scroll { overflow-x: auto; }
+    table { width: 100%; min-width: 590px; border-collapse: collapse; text-align: left; }
+    thead { background: #fbe9f0; }
+    th { white-space: nowrap; border-bottom: 1px solid var(--line); padding: 18px 21px; }
+    td { border-bottom: 1px solid #f4e4ea; padding: 19px 21px; color: var(--ink); }
+    tbody tr:last-child td { border-bottom: 0; }
+    tbody tr { transition: background .2s; }
+    tbody tr:hover { background: #fff4f8; }
+    tbody tr.expired-row { background: #f1f1f1; color: #8a8a8a; }
+    tbody tr.expired-row:hover { background: #e9e9e9; }
+    tbody tr.expired-row td { color: #8a8a8a; }
+    tbody tr.expired-row .count-pill { background: #dedede; color: #777; }
+    tbody td:nth-child(3) { font-weight: 600; }
+
+    .count-pill {
+      display: inline-flex;
+      min-width: 38px;
+      justify-content: center;
+      border-radius: 9px;
+      background: #f9dfeb;
+      color: #983958;
+      padding: 5px 9px;
+      font-weight: 700;
+    }
+    .icon-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin-left: 12px;
+      padding: 4px;
+      border: 0;
+      border-radius: 8px;
+      background: transparent;
+      color: var(--rose);
+      vertical-align: middle;
+      cursor: pointer;
+      transition: background .2s;
+    }
+    .icon-button:hover:not(:disabled) { background: #fbe9f0; }
+    .icon-button:disabled { opacity: .5; cursor: wait; }
+    .icon-button svg { width: 18px; height: 18px; }
+
+    .toolbar-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 12px;
+      border: 1px solid #e8cbd7;
+      border-radius: 10px;
+      background: #fff;
+      color: var(--ink);
+      font: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background .15s, border-color .15s;
+    }
+    .toolbar-btn:hover { background: #fbe9f0; border-color: #d8a6bb; }
+    .toolbar-btn svg { width: 15px; height: 15px; }
+    .toolbar-btn.danger { color: #983958; }
+
+    .reveal { animation: rise .6s both; }
+    .reveal-late { animation: rise .6s .12s both; }
+    .reveal-last { animation: rise .6s .23s both; }
+    @keyframes rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+    @media (prefers-reduced-motion: reduce) {
+      .reveal, .reveal-late, .reveal-last { animation: none; }
+      .submit-action, tbody tr, .field, .icon-button { transition: none; }
+    }
+    @media (max-width: 640px) {
+      .table-scroll { margin-left: -1rem; margin-right: -1rem; }
+    }
+  </style>
+  <script src="https://cdn.tailwindcss.com/3.4.17" type="text/javascript"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lucide@0.577.0/dist/umd/lucide.min.js" type="text/javascript"></script>
+</head>
+<body data-template-id="__page-root" class="w-full" style="background: rgb(255, 243, 246);">
+  <div class="app-shell w-full">
+    <main class="mx-auto w-full max-w-6xl px-4 py-10 sm:px-8 sm:py-16">
+      <header class="reveal mb-9 sm:mb-11">
+        <div class="mb-5 flex items-center gap-3">
+          <span class="eyebrow-rule" aria-hidden="true"></span>
+          <p class="uppercase tracking-[0.22em]" style="color: rgb(173, 65, 109); font-weight: 700; font-size: 12px;">IL TUO REGISTRO</p>
+        </div>
+        <h1 class="title-face leading-tight" style="color: rgb(69, 43, 57); font-weight: 600; font-size: 44px;">Registro esami</h1>
+        <p class="mt-3 max-w-xl leading-relaxed" style="color: rgb(128, 107, 119); font-weight: 400; font-size: 16px;">Tieni tutte le date importanti in ordine, in un unico posto. I dati restano salvati su questo dispositivo.</p>
+      </header>
+
+      <!-- ============ ELENCO ESAMI ============ -->
+      <section class="reveal-late mb-9" aria-labelledby="table-title">
+        <div class="mb-4 flex flex-wrap items-end justify-between gap-3 px-1">
+          <div class="flex items-end gap-3">
+            <h2 id="table-title" class="title-face" style="color: rgb(69, 43, 57); font-weight: 600; font-size: 25px;">Elenco esami</h2>
+            <span id="record-count" class="text-sm font-medium text-[#806b77]" aria-live="polite"></span>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <button type="button" id="export-btn" class="toolbar-btn">
+              <i data-lucide="download" aria-hidden="true"></i> Esporta JSON
+            </button>
+            <button type="button" id="import-btn" class="toolbar-btn">
+              <i data-lucide="upload" aria-hidden="true"></i> Importa JSON
+            </button>
+            <button type="button" id="clear-btn" class="toolbar-btn danger">
+              <i data-lucide="trash-2" aria-hidden="true"></i> Svuota
+            </button>
+            <input type="file" id="import-file" accept=".json,application/json" hidden>
+          </div>
+        </div>
+
+        <div class="surface overflow-hidden rounded-[22px]" style="background: rgb(255, 255, 255);">
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col" style="color: rgb(113, 61, 85); font-weight: 700; font-size: 14px;">Contatore</th>
+                  <th scope="col" style="color: rgb(113, 61, 85); font-weight: 700; font-size: 14px;">Data</th>
+                  <th scope="col" style="color: rgb(113, 61, 85); font-weight: 700; font-size: 14px;">Esame</th>
+                  <th scope="col" style="color: rgb(113, 61, 85); font-weight: 700; font-size: 14px;">Ora</th>
+                </tr>
+              </thead>
+              <tbody id="exam-rows"></tbody>
+            </table>
+          </div>
+          <p id="empty-message" class="hidden px-5 py-10 text-center" style="color: rgb(128, 107, 119); font-size: 16px;">Nessun esame ancora. Aggiungi il primo qui sotto.</p>
+        </div>
+
+        <p id="limit-message" class="mt-3 hidden px-1 text-sm text-[#983958]" role="status"></p>
+
+        <div id="error-box" class="mt-4 hidden rounded-xl border border-[#e8b8c9] bg-[#fff5f8] p-4" role="alert">
+          <p id="error-message" class="text-sm text-[#873657]"></p>
+        </div>
+
+        <p id="success-message" class="mt-4 text-sm text-[#74604a]" role="status" aria-live="polite"></p>
+      </section>
+
+      <!-- ============ AGGIUNGI UN ESAME ============ -->
+      <section class="surface reveal-last rounded-[22px] p-5 sm:p-8" aria-labelledby="form-title" style="background: rgb(255, 255, 255);">
+        <div class="mb-6">
+          <h2 id="form-title" class="title-face" style="color: rgb(69, 43, 57); font-weight: 600; font-size: 25px;">Aggiungi un esame</h2>
+          <p class="mt-1" style="color: rgb(128, 107, 119); font-size: 14px;">Il contatore viene assegnato automaticamente.</p>
+        </div>
+        <form id="exam-form" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-[1fr_1.5fr_1fr_auto] lg:items-end" novalidate>
+          <div>
+            <label class="mb-2 block" for="exam-date" style="color: rgb(69, 43, 57); font-weight: 600; font-size: 14px;">Data</label>
+            <input id="exam-date" class="field" type="date" required>
+          </div>
+          <div>
+            <label class="mb-2 block" for="exam-name" style="color: rgb(69, 43, 57); font-weight: 600; font-size: 14px;">Esame</label>
+            <input id="exam-name" class="field" type="text" maxlength="120" autocomplete="off" required>
+          </div>
+          <div>
+            <label class="mb-2 block" for="exam-time" style="color: rgb(69, 43, 57); font-weight: 600; font-size: 14px;">Ora</label>
+            <input id="exam-time" class="field" type="time" required>
+          </div>
+          <button id="submit-button" type="submit" class="submit-action min-h-[48px] rounded-xl bg-[#ad416d] px-6 font-semibold text-white transition">
+            <span data-template-id="add-label" style="color: rgb(255, 255, 255); font-weight: 600; font-size: 16px;">Aggiungi esame</span>
+            <span data-template-id="saving-label" class="hidden" style="color: rgb(255, 255, 255); font-weight: 600; font-size: 16px;">Salvataggio…</span>
+          </button>
+        </form>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    (() => {
+      "use strict";
+
+      const STORAGE_KEY = 'registro-esami-v1';
+      const MAX_RECORDS = 999;
+      const WARN_THRESHOLD = 900;
+      const MS_PER_DAY = 86400000;
+
+      const form = document.getElementById('exam-form');
+      const dateInput = document.getElementById('exam-date');
+      const nameInput = document.getElementById('exam-name');
+      const timeInput = document.getElementById('exam-time');
+      const rowsBody = document.getElementById('exam-rows');
+      const emptyMessage = document.getElementById('empty-message');
+      const recordCount = document.getElementById('record-count');
+      const limitMessage = document.getElementById('limit-message');
+      const errorBox = document.getElementById('error-box');
+      const errorMessage = document.getElementById('error-message');
+      const successMessage = document.getElementById('success-message');
+      const submitButton = document.getElementById('submit-button');
+      const addLabel = submitButton.querySelector('[data-template-id="add-label"]');
+      const savingLabel = submitButton.querySelector('[data-template-id="saving-label"]');
+      const exportBtn = document.getElementById('export-btn');
+      const importBtn = document.getElementById('import-btn');
+      const importFile = document.getElementById('import-file');
+      const clearBtn = document.getElementById('clear-btn');
+
+      let records = [];
+      let submitting = false;
+
+      /* ---------- storage ---------- */
+
+      function loadFromStorage() {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (!raw) return [];
+          const parsed = JSON.parse(raw);
+          return Array.isArray(parsed) ? parsed.filter(isValidRecord) : [];
+        } catch (_) {
+          showError('Impossibile leggere i dati salvati. Il registro è stato reimpostato.');
+          return [];
+        }
+      }
+
+      function saveToStorage() {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+          return true;
+        } catch (_) {
+          showError('Impossibile salvare sul dispositivo (spazio esaurito o localStorage non disponibile).');
+          return false;
+        }
+      }
+
+      function isValidRecord(r) {
+        return r && typeof r === 'object'
+          && typeof r.data === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(r.data)
+          && typeof r.esame === 'string' && r.esame.length > 0;
+      }
+
+      function makeId() {
+        if (window.crypto && typeof window.crypto.randomUUID === 'function') {
+          return window.crypto.randomUUID();
+        }
+        return 'r-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
+      }
+
+      /* ---------- utilità date ---------- */
+
+      function parseISODate(value) {
+        const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value || '');
+        if (!match) return null;
+        return Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+      }
+
+      function todayUTC() {
+        const now = new Date();
+        return Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+      }
+
+      // Come da tua richiesta: oggi = -1, domani = 0, ieri = -2, …
+      function daysFromToday(value) {
+        const exam = parseISODate(value);
+        if (exam === null) return null;
+        return Math.round((exam - todayUTC()) / MS_PER_DAY) - 1;
+      }
+
+      function isPastDate(value) {
+        const exam = parseISODate(value);
+        return exam !== null && exam < todayUTC();
+      }
+
+      function formatDate(value) {
+        const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value || '');
+        return match ? `${match[3]}/${match[2]}/${match[1]}` : (value || '—');
+      }
+
+      /* ---------- messaggi ---------- */
+
+      function showError(message) {
+        successMessage.textContent = '';
+        errorMessage.textContent = message;
+        errorBox.classList.remove('hidden');
+      }
+
+      function clearError() {
+        errorBox.classList.add('hidden');
+      }
+
+      function syncSubmitButton() {
+        const atLimit = records.length >= MAX_RECORDS;
+        submitButton.disabled = submitting || atLimit;
+        addLabel.classList.toggle('hidden', submitting);
+        savingLabel.classList.toggle('hidden', !submitting);
+      }
+
+      /* ---------- rendering ---------- */
+
+      function sortRecords(list) {
+        return list
+          .map(record => ({
+            record,
+            days: daysFromToday(record.data),
+            past: isPastDate(record.data)
+          }))
+          .sort((a, b) => {
+            if (a.past !== b.past) return a.past ? 1 : -1;
+            if (a.days !== null && b.days !== null && a.days !== b.days) {
+              return a.past ? b.days - a.days : a.days - b.days;
+            }
+            if ((a.days === null) !== (b.days === null)) {
+              return a.days === null ? 1 : -1;
+            }
+            return String(a.record.id).localeCompare(String(b.record.id));
+          })
+          .map(item => item.record);
+      }
+
+      function createRow(record) {
+        const row = document.createElement('tr');
+        row.dataset.recordId = String(record.id);
+        for (let i = 0; i < 4; i++) row.appendChild(document.createElement('td'));
+
+        const examCell = row.children[2];
+        examCell.classList.add('align-middle');
+
+        const deleteButton = document.createElement('button');
+        deleteButton.type = 'button';
+        deleteButton.className = 'icon-button';
+        deleteButton.setAttribute('aria-label', `Elimina esame: ${record.esame || 'senza nome'}`);
+        deleteButton.innerHTML = '<i data-lucide="trash-2" aria-hidden="true"></i>';
+        deleteButton.addEventListener('click', () => handleDelete(record.id, deleteButton));
+        examCell.appendChild(deleteButton);
+
+        return row;
+      }
+
+      function setCellText(cell, value) {
+        if (cell.textContent !== value) cell.textContent = value;
+      }
+
+      function updateRow(row, record) {
+        const days = daysFromToday(record.data);
+        row.classList.toggle('expired-row', isPastDate(record.data));
+
+        const counterCell = row.children[0];
+        let pill = counterCell.firstElementChild;
+        if (!pill) {
+          pill = document.createElement('span');
+          pill.className = 'count-pill';
+          counterCell.appendChild(pill);
+        }
+        const counterText = days === null ? '—' : String(days);
+        if (pill.textContent !== counterText) pill.textContent = counterText;
+
+        setCellText(row.children[1], formatDate(record.data));
+
+        const examCell = row.children[2];
+        const examText = record.esame || '—';
+        const textNode = [...examCell.childNodes].find(n => n.nodeType === Node.TEXT_NODE);
+        if (textNode) {
+          if (textNode.textContent !== examText) textNode.textContent = examText;
+        } else {
+          examCell.insertBefore(document.createTextNode(examText), examCell.firstChild);
+        }
+
+        setCellText(row.children[3], record.ora || '—');
+      }
+
+      function render() {
+        const ordered = sortRecords(records);
+        const keepIds = new Set(ordered.map(r => String(r.id)));
+
+        for (const row of [...rowsBody.children]) {
+          if (!keepIds.has(row.dataset.recordId)) row.remove();
+        }
+
+        let iconsPending = false;
+        ordered.forEach((record, index) => {
+          const id = String(record.id);
+          let row = [...rowsBody.children].find(el => el.dataset.recordId === id);
+          if (!row) {
+            row = createRow(record);
+            iconsPending = true;
+          }
+          updateRow(row, record);
+
+          const target = rowsBody.children[index] || null;
+          if (target !== row) rowsBody.insertBefore(row, target);
+        });
+
+        if (iconsPending && window.lucide && typeof window.lucide.createIcons === 'function') {
+          window.lucide.createIcons();
+        }
+
+        emptyMessage.classList.toggle('hidden', ordered.length !== 0);
+        recordCount.textContent = `${ordered.length} / ${MAX_RECORDS}`;
+
+        const total = records.length;
+        limitMessage.classList.toggle('hidden', total < WARN_THRESHOLD);
+        if (total >= MAX_RECORDS) {
+          limitMessage.textContent = `Hai raggiunto il limite di ${MAX_RECORDS} esami.`;
+        } else if (total >= WARN_THRESHOLD) {
+          limitMessage.textContent = `Il registro si avvicina al limite di ${MAX_RECORDS} esami.`;
+        }
+
+        syncSubmitButton();
+      }
+
+      /* ---------- azioni ---------- */
+
+      function handleDelete(id, control) {
+        if (control.disabled) return;
+        control.disabled = true;
+        const before = records;
+        records = records.filter(r => String(r.id) !== String(id));
+        if (!saveToStorage()) {
+          records = before;
+          control.disabled = false;
+          return;
+        }
+        clearError();
+        successMessage.textContent = 'Esame eliminato.';
+        render();
+      }
+
+      function downloadFile(filename, text) {
+        const blob = new Blob([text], { type: 'application/json;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      }
+
+      exportBtn.addEventListener('click', () => {
+        if (records.length === 0) {
+          showError('Non c’è nulla da esportare.');
+          return;
+        }
+        const stamp = new Date().toISOString().slice(0, 10);
+        downloadFile(`registro-esami-${stamp}.json`, JSON.stringify(records, null, 2));
+        clearError();
+        successMessage.textContent = `Esportati ${records.length} esami.`;
+      });
+
+      importBtn.addEventListener('click', () => importFile.click());
+
+      importFile.addEventListener('change', () => {
+        const file = importFile.files && importFile.files[0];
+        importFile.value = '';
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = () => {
+          let imported;
+          try {
+            imported = JSON.parse(String(reader.result));
+          } catch (_) {
+            showError('Il file selezionato non è un JSON valido.');
+            return;
+          }
+          if (!Array.isArray(imported)) {
+            showError('Il file JSON deve contenere un array di esami.');
+            return;
+          }
+          const clean = imported.filter(isValidRecord).map(r => ({
+            id: typeof r.id === 'string' && r.id ? r.id : makeId(),
+            data: r.data,
+            esame: r.esame,
+            ora: typeof r.ora === 'string' ? r.ora : ''
+          }));
+          if (clean.length === 0) {
+            showError('Il file non contiene esami validi.');
+            return;
+          }
+          if (records.length > 0 && !confirm(
+            `Importare ${clean.length} esami? Il registro attuale (${records.length}) verrà sostituito.`
+          )) return;
+
+          // dedup per id, in caso di file con id duplicati
+          const seen = new Set();
+          const dedup = [];
+          for (const r of clean) {
+            if (seen.has(r.id)) r.id = makeId();
+            seen.add(r.id);
+            dedup.push(r);
+          }
+
+          const before = records;
+          records = dedup.slice(0, MAX_RECORDS);
+          if (!saveToStorage()) { records = before; return; }
+          clearError();
+          successMessage.textContent = `Importati ${records.length} esami.`;
+          render();
+        };
+        reader.onerror = () => showError('Impossibile leggere il file.');
+        reader.readAsText(file);
+      });
+
+      clearBtn.addEventListener('click', () => {
+        if (records.length === 0) {
+          showError('Il registro è già vuoto.');
+          return;
+        }
+        if (!confirm(`Svuotare il registro (${records.length} esami)? L’operazione non è reversibile.`)) return;
+        const before = records;
+        records = [];
+        if (!saveToStorage()) { records = before; return; }
+        clearError();
+        successMessage.textContent = 'Registro svuotato.';
+        render();
+      });
+
+      /* ---------- eventi form ---------- */
+
+      form.addEventListener('submit', event => {
+        event.preventDefault();
+        successMessage.textContent = '';
+        clearError();
+
+        if (records.length >= MAX_RECORDS) {
+          showError(`Hai raggiunto il limite di ${MAX_RECORDS} esami.`);
+          return;
+        }
+        if (!form.reportValidity()) return;
+
+        const examDate = dateInput.value;
+        const examName = nameInput.value.trim();
+        const examTime = timeInput.value;
+
+        if (!examName) {
+          showError('Inserisci il nome dell’esame.');
+          nameInput.focus();
+          return;
+        }
+
+        const days = daysFromToday(examDate);
+        const record = {
+          id: makeId(),
+          contatore: days === null ? 0 : days,
+          data: examDate,
+          esame: examName,
+          ora: examTime
+        };
+
+        submitting = true;
+        syncSubmitButton();
+
+        const before = records;
+        records = records.concat(record);
+        if (!saveToStorage()) {
+          records = before;
+          submitting = false;
+          syncSubmitButton();
+          return;
+        }
+
+        submitting = false;
+        form.reset();
+        successMessage.textContent = 'Esame salvato.';
+        render();
+        dateInput.focus();
+      });
+
+      /* ---------- avvio ---------- */
+
+      records = loadFromStorage();
+      render();
+      if (window.lucide && typeof window.lucide.createIcons === 'function') {
+        window.lucide.createIcons();
+      }
+    })();
+  </script>
+</body>
+</html>
