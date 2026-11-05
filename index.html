@@ -272,55 +272,74 @@
     }
 
     // --- INIZIO SINCRONIZZAZIONE FIREBASE ---
-    let isRemoteUpdate = false;
+    let isSyncing = false; // Blocca il loop di aggiornamenti
 
     timerRef.on('value', (snapshot) => {
       const data = snapshot.val();
-      if (!data) {
-         // Se il database è vuoto, carica i dati di default
-         saveToFirebase();
-         return;
-      }
+      if (!data) return;
       
-      isRemoteUpdate = true;
-      
-      // Controlla se giorno/settimana/mese/anno sono cambiati
+      // Se stiamo salvando noi, o se il timer locale è in esecuzione, ignoriamo
+      // i dati remoti per non sovrascrivere i secondi appena calcolati.
+      if (isSyncing) return;
+      if (isRunning) return;
+
       const now = new Date();
       const nDate = todayStr();
       const nWeek = getWeekKey(now);
       const nMonth = getMonthKey(now);
       const nYear = getYearKey(now);
 
-      if (data.today && data.today.date === nDate) todaySeconds = data.today.seconds;
-      else todaySeconds = 0;
+      let changed = false;
 
-      if (data.week && data.week.week === nWeek) weekSeconds = data.week.seconds;
-      else weekSeconds = 0;
+      if (data.today && data.today.date === nDate) {
+        if (todaySeconds !== data.today.seconds) { todaySeconds = data.today.seconds; changed = true; }
+      } else if (todaySeconds !== 0) { todaySeconds = 0; changed = true; }
 
-      if (data.month && data.month.month === nMonth) monthSeconds = data.month.seconds;
-      else monthSeconds = 0;
+      if (data.week && data.week.week === nWeek) {
+        if (weekSeconds !== data.week.seconds) { weekSeconds = data.week.seconds; changed = true; }
+      } else if (weekSeconds !== 0) { weekSeconds = 0; changed = true; }
 
-      if (data.year && data.year.year === nYear) yearSeconds = data.year.seconds;
-      else yearSeconds = 0;
+      if (data.month && data.month.month === nMonth) {
+        if (monthSeconds !== data.month.seconds) { monthSeconds = data.month.seconds; changed = true; }
+      } else if (monthSeconds !== 0) { monthSeconds = 0; changed = true; }
+
+      if (data.year && data.year.year === nYear) {
+        if (yearSeconds !== data.year.seconds) { yearSeconds = data.year.seconds; changed = true; }
+      } else if (yearSeconds !== 0) { yearSeconds = 0; changed = true; }
 
       activeDate = nDate;
       weekKey = nWeek;
       monthKey = nMonth;
       yearKey = nYear;
 
-      renderTodayTotal();
-      isRemoteUpdate = false;
+      if (changed) {
+        renderTodayTotal();
+      }
     });
 
     function saveToFirebase() {
-      if (isRemoteUpdate) return; // Evita loop
+      if (isSyncing) return;
+      isSyncing = true;
+      
       timerRef.set({
         today: { date: activeDate, seconds: todaySeconds },
         week: { week: weekKey, seconds: weekSeconds },
         month: { month: monthKey, seconds: monthSeconds },
         year: { year: yearKey, seconds: yearSeconds }
+      }).then(() => {
+        // Sblocca dopo un secondo per evitare che la risposta di Firebase sovrascriva i dati locali
+        setTimeout(() => { isSyncing = false; }, 1000); 
+      }).catch(() => {
+        isSyncing = false;
       });
     }
+
+    // Salvataggio di sicurezza ogni 10 secondi se il timer è in esecuzione
+    setInterval(() => {
+      if (isRunning) {
+        saveToFirebase();
+      }
+    }, 10000);
     // --- FINE SINCRONIZZAZIONE FIREBASE ---
 
     function formatDuration(totalSeconds) {
@@ -364,7 +383,7 @@
       yearSeconds += n;
       
       renderTodayTotal();
-      saveToFirebase();
+      // RIMOSSO saveToFirebase() da qui per non intasare la rete ad ogni tick
     }
 
     function showTodayResetConfirmation(show) {
