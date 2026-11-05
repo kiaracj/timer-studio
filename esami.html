@@ -127,6 +127,10 @@
   </style>
   <script src="https://cdn.tailwindcss.com/3.4.17" type="text/javascript"></script>
   <script src="https://cdn.jsdelivr.net/npm/lucide@0.577.0/dist/umd/lucide.min.js" type="text/javascript"></script>
+
+  <!-- FIREBASE SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
 </head>
 <body data-template-id="__page-root" class="w-full" style="background: rgb(255, 243, 246);">
   <div class="app-shell w-full">
@@ -137,7 +141,7 @@
           <p class="uppercase tracking-[0.22em]" style="color: rgb(173, 65, 109); font-weight: 700; font-size: 12px;">IL TUO REGISTRO</p>
         </div>
         <h1 class="title-face leading-tight" style="color: rgb(69, 43, 57); font-weight: 600; font-size: 44px;">Registro esami</h1>
-        <p class="mt-3 max-w-xl leading-relaxed" style="color: rgb(128, 107, 119); font-weight: 400; font-size: 16px;">Tieni tutte le date importanti in ordine, in un unico posto. I dati restano salvati su questo dispositivo.</p>
+        <p class="mt-3 max-w-xl leading-relaxed" style="color: rgb(128, 107, 119); font-weight: 400; font-size: 16px;">Tieni tutte le date importanti in ordine, in un unico posto. I dati sono sincronizzati su tutti i tuoi dispositivi.</p>
       </header>
 
       <!-- ============ ELENCO ESAMI ============ -->
@@ -219,7 +223,15 @@
     (() => {
       "use strict";
 
-      const STORAGE_KEY = 'registro-esami-v1';
+      // --- INIZIO CONFIGURAZIONE FIREBASE ---
+      const firebaseConfig = {
+        databaseURL: "https://registro-studio-bfb27-default-rtdb.europe-west1.firebasedatabase.app/"
+      };
+      firebase.initializeApp(firebaseConfig);
+      const db = firebase.database();
+      const examsRef = db.ref('esami');
+      // --- FINE CONFIGURAZIONE FIREBASE ---
+
       const MAX_RECORDS = 999;
       const WARN_THRESHOLD = 900;
       const MS_PER_DAY = 86400000;
@@ -246,26 +258,32 @@
       let records = [];
       let submitting = false;
 
-      /* ---------- storage ---------- */
-
-      function loadFromStorage() {
-        try {
-          const raw = localStorage.getItem(STORAGE_KEY);
-          if (!raw) return [];
-          const parsed = JSON.parse(raw);
-          return Array.isArray(parsed) ? parsed.filter(isValidRecord) : [];
-        } catch (_) {
-          showError('Impossibile leggere i dati salvati. Il registro è stato reimpostato.');
-          return [];
+      /* ---------- storage (FIREBASE) ---------- */
+      
+      // Ascolta i cambiamenti da Firebase in tempo reale
+      examsRef.on('value', (snapshot) => {
+        const data = snapshot.val();
+        
+        // Firebase restituisce gli oggetti per ID. Li convertiamo in array.
+        if (data) {
+          records = Object.values(data);
+        } else {
+          records = [];
         }
-      }
+        
+        render();
+      });
 
       function saveToStorage() {
         try {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+          // Creiamo un oggetto { id: record } per evitare problemi con gli array di Firebase
+          const dataToSave = {};
+          records.forEach(r => { dataToSave[r.id] = r; });
+          
+          examsRef.set(records.length > 0 ? dataToSave : null);
           return true;
         } catch (_) {
-          showError('Impossibile salvare sul dispositivo (spazio esaurito o localStorage non disponibile).');
+          showError('Impossibile salvare sul cloud. Controlla la connessione.');
           return false;
         }
       }
@@ -296,7 +314,6 @@
         return Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
       }
 
-      // Come da tua richiesta: oggi = -1, domani = 0, ieri = -2, …
       function daysFromToday(value) {
         const exam = parseISODate(value);
         if (exam === null) return null;
@@ -459,7 +476,7 @@
         }
         clearError();
         successMessage.textContent = 'Esame eliminato.';
-        render();
+        // Il render avverrà quando Firebase invierà i nuovi dati tramite on('value')
       }
 
       function downloadFile(filename, text) {
@@ -519,7 +536,6 @@
             `Importare ${clean.length} esami? Il registro attuale (${records.length}) verrà sostituito.`
           )) return;
 
-          // dedup per id, in caso di file con id duplicati
           const seen = new Set();
           const dedup = [];
           for (const r of clean) {
@@ -533,7 +549,6 @@
           if (!saveToStorage()) { records = before; return; }
           clearError();
           successMessage.textContent = `Importati ${records.length} esami.`;
-          render();
         };
         reader.onerror = () => showError('Impossibile leggere il file.');
         reader.readAsText(file);
@@ -550,7 +565,6 @@
         if (!saveToStorage()) { records = before; return; }
         clearError();
         successMessage.textContent = 'Registro svuotato.';
-        render();
       });
 
       /* ---------- eventi form ---------- */
@@ -600,14 +614,10 @@
         submitting = false;
         form.reset();
         successMessage.textContent = 'Esame salvato.';
-        render();
         dateInput.focus();
       });
 
       /* ---------- avvio ---------- */
-
-      records = loadFromStorage();
-      render();
       if (window.lucide && typeof window.lucide.createIcons === 'function') {
         window.lucide.createIcons();
       }
